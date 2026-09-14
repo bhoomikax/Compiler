@@ -1,5 +1,7 @@
+import ast.Program;
 import lexer.Lexer;
 import lexer.Token;
+import parser.Parser;
 
 import java.util.List;
 
@@ -12,11 +14,8 @@ public class Main {
                     int x = 10;
                     decimal price = 99.50;
                     truth active = yes;
-                    string name = "Arc";
 
-                    if (x >= 10 && active) {
-                        output("Hello", name);
-                    }
+                    x = x + 5;
 
                     send x;
                 }
@@ -25,8 +24,12 @@ public class Main {
         Lexer lexer = new Lexer(source);
         List<Token> tokens = lexer.tokenize();
 
-        for (Token token : tokens) {
-            System.out.println(token);
-        }
+        Parser parser = new Parser(tokens);
+        Program program = parser.parse();
+
+        System.out.println(
+                "Parsed functions: "
+                        + program.getFunctions().size()
+        );
     }
 }
