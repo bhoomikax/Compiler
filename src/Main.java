@@ -10,14 +10,42 @@ public class Main {
     public static void main(String[] args) {
 
         String source = """
+                func int add(int a, int b) {
+                    send a + b;
+                }
+
                 func int main() {
-                    int x = 10;
-                    decimal price = 99.50;
-                    truth active = yes;
 
-                    x = x + 5;
+                    int x = input();
+                    int y = 20;
 
-                    send x;
+                    if (x > y) {
+                        output("x is greater");
+                    } else if (x == y) {
+                        output("x equals y");
+                    } else {
+                        output("y is greater");
+                    }
+
+                    loop (x < 100) {
+                        x = x + 1;
+
+                        if (x == 50) {
+                            skip;
+                        }
+
+                        if (x == 80) {
+                            break;
+                        }
+                    }
+
+                    each (int i = 0; i < 5; i = i + 1) {
+                        output(i);
+                    }
+
+                    int result = add(x, y);
+
+                    send result;
                 }
                 """;
 
@@ -31,5 +59,12 @@ public class Main {
                 "Parsed functions: "
                         + program.getFunctions().size()
         );
+
+        for (var function : program.getFunctions()) {
+            System.out.println(
+                    "Function: "
+                            + function.getName()
+            );
+        }
     }
 }
