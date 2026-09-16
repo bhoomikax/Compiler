@@ -2,6 +2,7 @@ import ast.Program;
 import lexer.Lexer;
 import lexer.Token;
 import parser.Parser;
+import semantic.SemanticAnalyzer;
 
 import java.util.List;
 
@@ -16,34 +17,12 @@ public class Main {
 
                 func int main() {
 
-                    int x = input();
+                    int x = 10;
                     int y = 20;
 
-                    if (x > y) {
-                        output("x is greater");
-                    } else if (x == y) {
-                        output("x equals y");
-                    } else {
-                        output("y is greater");
-                    }
+                    int result = add(x , y);
 
-                    loop (x < 100) {
-                        x = x + 1;
-
-                        if (x == 50) {
-                            skip;
-                        }
-
-                        if (x == 80) {
-                            break;
-                        }
-                    }
-
-                    each (int i = 0; i < 5; i = i + 1) {
-                        output(i);
-                    }
-
-                    int result = add(x, y);
+                    output(result);
 
                     send result;
                 }
@@ -55,16 +34,13 @@ public class Main {
         Parser parser = new Parser(tokens);
         Program program = parser.parse();
 
-        System.out.println(
-                "Parsed functions: "
-                        + program.getFunctions().size()
-        );
+        SemanticAnalyzer analyzer =
+                new SemanticAnalyzer();
 
-        for (var function : program.getFunctions()) {
-            System.out.println(
-                    "Function: "
-                            + function.getName()
-            );
-        }
+        analyzer.analyze(program);
+
+        System.out.println(
+                "Semantic analysis completed."
+        );
     }
 }
