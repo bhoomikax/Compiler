@@ -3,8 +3,9 @@
 Run `powershell -ExecutionPolicy Bypass -File .\tests\run-tests.ps1` from the
 `Compiler` directory. Each positive test is passed through the Java compiler,
 the x86-64 MinGW assembler/linker, and the resulting Windows executable. The
-runner compares exact standard output. Syntax and semantic-error cases pass
-only when compilation exits unsuccessfully and does not write assembly.
+runner compares standard output, including its single trailing newline.
+Syntax and semantic-error cases pass only when compilation exits
+unsuccessfully and does not write assembly.
 
 | Test | Coverage |
 | --- | --- |
@@ -33,5 +34,7 @@ only when compilation exits unsuccessfully and does not write assembly.
   stack-passed arguments are not implemented.
 - `output(char)` prints the character's integer code point; `truth` prints
   `1` or `0`.
-- String and character escape sequences are not implemented; the language has no array/indexing support.
-- Definite-return analysis is incomplete: a non-void function is not checked to return a value on every control-flow path.
+- String and character escape sequences are not implemented.
+- Arrays and indexing are not implemented.
+- Definite-return analysis is incomplete: a non-void function is not checked
+  to return a value on every control-flow path.

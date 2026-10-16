@@ -33,9 +33,10 @@ Semantic Analysis
 ```
 
 The implemented language provides scalar data types, variables, expressions,
-control flow, functions, and input/output. Arrays are described in some
-design material but are not implemented by the current lexer, parser, or
-code generator.
+control flow, functions, and input/output. Arrays and non-integer input shown
+in some design examples are not implemented by the current lexer, parser, or
+code generator. See [the integration-test notes](../tests/README.md) for the
+verified feature set and known limitations.
 
 ---
 
@@ -164,12 +165,10 @@ char grade = 'A';
 string name = "Arc";
 ```
 
-A variable may also be initialized using input:
+A variable may also be initialized using integer input:
 
 ```arc
 int age = input();
-
-string name = input();
 ```
 
 ---
@@ -400,30 +399,22 @@ int result = (2 + 3) * 4;
 
 Arc provides input using the `input()` expression.
 
-The variable's declared type determines the expected input type.
+The current implementation reads an integer only. The type-specific input
+examples below describe planned syntax and are not supported.
 
 Examples:
 
 ```arc
 int age = input();
 
-decimal cgpa = input();
-
-char grade = input();
-
-string name = input();
-
-truth student = input();
+// Not currently supported:
+// decimal cgpa = input();
+// char grade = input();
+// string name = input();
+// truth student = input();
 ```
 
-For `truth`, valid input values are:
-
-```text
-yes
-no
-```
-
-The compiler/runtime is responsible for converting the input into the required type.
+Typed input conversion is not implemented.
 
 ---
 
@@ -441,7 +432,8 @@ output(x);
 output("Age:", age);
 ```
 
-Multiple expressions may be passed to `output()`.
+Multiple expressions may be passed to `output()`; each argument is printed on
+its own line.
 
 ---
 
@@ -610,7 +602,7 @@ func int multiply(int a, int b) {
 }
 ```
 
-A function can have zero or more parameters.
+A function can have zero to four parameters in the current implementation.
 
 Example:
 
@@ -666,32 +658,31 @@ The number and types of arguments must match the function's parameter list.
 
 # 26. Main Function
 
-Every executable Arc program must contain:
+An executable must define a function named `main`. Both `void` and `int`
+return types are accepted. If `main` returns an integer, use `send` to set its
+exit status; the compiler does not check that every control-flow path returns
+a value.
 
 ```arc
-func int main() {
+func void main() {
     ...
 }
 ```
 
-The `main` function is the entry point of the program.
-
-Its return value represents the program's exit status.
-
 Example:
 
 ```arc
-func int main() {
+func void main() {
     output("Hello, Arc!");
-    send 0;
 }
 ```
 
 ---
 
-# 27. Arrays
+# 27. Arrays (Planned; Not Implemented)
 
-Arc supports basic arrays.
+Array syntax is part of the design grammar only. The current compiler does not
+parse or generate array declarations, literals, or indexing.
 
 Syntax:
 
@@ -944,7 +935,7 @@ input
 
 # 35. Example Arc Program
 
-The following program demonstrates several Arc features:
+The following program demonstrates implemented Arc features:
 
 ```arc
 func int add(int a, int b) {
@@ -953,7 +944,7 @@ func int add(int a, int b) {
 
 func int main() {
 
-    string name = input();
+    string name = "Arc";
 
     int age = input();
 
@@ -981,7 +972,7 @@ func int main() {
 
 # 36. Compiler Requirements
 
-CipherCompiler will implement the following major compilation stages:
+CipherCompiler uses the following compilation stages:
 
 ### Lexical Analysis
 
@@ -1036,39 +1027,32 @@ Assembly → Executable
 
 ---
 
-# 37. Version 1 Scope
+# 37. Implementation Status
 
-The first complete implementation of Arc will prioritize:
+The current compiler implements:
 
-* `int`
+* `int`, `decimal`, `char`, `string`, and `truth`
 * variables
-* arithmetic expressions
-* comparison expressions
-* logical expressions
-* `truth`
-* `if / else`
-* `loop`
+* arithmetic, comparison, equality, and logical expressions
+* `if / else` (including `else if`)
+* `while` and `loop`
 * `each`
 * `break`
 * `skip`
-* functions
-* function parameters
+* functions with up to four parameters
 * `send`
 * lexical scope
-* symbol table
-* x86-64 code generation
+* integer input and output of scalar values and strings
+* Windows x86-64 code generation
 
-The following features may be implemented after the core compiler is functional:
+The following features described elsewhere in this design document are not
+implemented:
 
-* `decimal`
-* `char`
-* `string`
 * arrays
-* advanced input/output
-* compiler optimizations
-* improved diagnostics
-
-This staged approach ensures that the fundamental compiler pipeline is completed before optional language features are added.
+* input types other than `int`
+* string and character escape sequences
+* more than four function parameters
+* definite-return analysis across all control-flow paths
 
 ---
 

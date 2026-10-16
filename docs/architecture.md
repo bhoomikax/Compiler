@@ -108,6 +108,11 @@ CipherCompiler/
 │   │       ├── ReturnStatement.java
 │   │       ├── IfStatement.java
 │   │       ├── WhileStatement.java
+│   │       ├── EachStatement.java
+│   │       ├── BreakStatement.java
+│   │       ├── SkipStatement.java
+│   │       ├── FunctionDeclaration.java
+│   │       ├── Parameter.java
 │   │       └── ExpressionStatement.java
 │   │
 │   ├── semantic/
@@ -127,10 +132,9 @@ CipherCompiler/
 │   └── functions.arc
 │
 ├── tests/
-│   ├── lexer/
-│   ├── parser/
-│   ├── semantic/
-│   └── codegen/
+│   ├── *.arc
+│   ├── README.md
+│   └── run-tests.ps1
 │
 └── docs/
     ├── language-spec.md
@@ -388,7 +392,8 @@ int x = 10;
 int x = 20;
 ```
 
-This should produce an error when duplicate declarations are not allowed in the same scope.
+The semantic analyzer rejects a duplicate in the same scope but allows a
+declaration to shadow an outer-scope variable.
 
 ### Undeclared variable
 
@@ -667,7 +672,10 @@ Main
 
 # 17. Error Handling
 
-CipherCompiler should provide errors with source locations.
+The lexer and parser report source line and column for their errors. Semantic
+errors currently report the error category and message without source
+locations; the detailed diagnostic below is an illustration of desired
+future output, not the current format.
 
 Example:
 
@@ -694,61 +702,15 @@ Code Generation Error
 
 # 18. Testing Strategy
 
-Testing is divided according to compiler stages.
+Run the current end-to-end integration suite in Windows PowerShell:
 
-```text
-tests/
-├── lexer/
-├── parser/
-├── semantic/
-└── codegen/
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\run-tests.ps1
 ```
 
-## Lexer Tests
-
-Test:
-
-* keywords
-* identifiers
-* numbers
-* operators
-* comments
-* invalid characters
-
-## Parser Tests
-
-Test:
-
-* expressions
-* precedence
-* declarations
-* assignments
-* conditionals
-* loops
-* functions
-
-## Semantic Tests
-
-Test:
-
-* type errors
-* undeclared variables
-* duplicate declarations
-* scope
-* invalid function calls
-* invalid `break`
-* invalid `skip`
-
-## Code Generation Tests
-
-Test:
-
-* arithmetic
-* variables
-* conditions
-* loops
-* functions
-* complete Arc programs
+The runner compiles each Arc fixture to assembly, assembles and links a Windows
+x86-64 executable, runs it, and checks expected output. See `tests/README.md`
+for coverage and known unsupported features.
 
 ---
 
@@ -888,9 +850,10 @@ The complete CipherCompiler architecture can therefore be summarized as:
 
 ---
 
-# 21. Development Order
+# 21. Original Development Roadmap
 
-CipherCompiler will be developed incrementally.
+This is the original development roadmap; phases describe the intended order
+and are not a claim that every listed feature is implemented.
 
 ```text
 Phase 1

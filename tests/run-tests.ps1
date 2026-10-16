@@ -119,7 +119,10 @@ try {
                 throw "Program wrote to stderr: $runtimeError"
             }
 
-            $actual = [regex]::Replace($actual, "\r\n?", "`n").TrimEnd("`n")
+            $actual = [regex]::Replace($actual, "\r\n?", "`n")
+            if ($actual.EndsWith("`n")) {
+                $actual = $actual.Substring(0, $actual.Length - 1)
+            }
             $expected = [string]::Join("`n", [string[]]$case.Expected)
             if ($actual -cne $expected) {
                 throw "Output mismatch. Expected '$expected'; got '$actual'."
