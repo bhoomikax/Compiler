@@ -8,6 +8,9 @@ This document defines the formal grammar of the Arc programming language.
 
 The grammar is written in a simplified BNF-style notation.
 
+The array productions below describe planned syntax only. The current
+compiler accepts scalar types and does not implement arrays.
+
 ---
 
 # 1. Notation

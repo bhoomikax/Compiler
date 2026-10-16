@@ -40,6 +40,7 @@ public class CodeGenerator {
     private int stackOffset = 0;
     private int labelCounter = 0;
     private int stringLabelCounter = 0;
+    private int callNesting = 0;
 
     private String currentFunctionReturnType = "void";
 
@@ -66,6 +67,7 @@ public class CodeGenerator {
         stackOffset = 0;
         labelCounter = 0;
         stringLabelCounter = 0;
+        callNesting = 0;
 
         // Collect function return types
         for (FunctionDeclaration function : program.getFunctions()) {
@@ -134,6 +136,7 @@ public class CodeGenerator {
         loopContinueLabels.clear();
 
         stackOffset = 0;
+        callNesting = 0;
 
         currentFunctionReturnType = function.getReturnType();
 
@@ -144,7 +147,7 @@ public class CodeGenerator {
 
         assembly.append("    pushq %rbp\n");
         assembly.append("    movq %rsp, %rbp\n");
-        assembly.append("    subq $512, %rsp\n");
+        assembly.append("    subq $4096, %rsp\n");
 
         String[] integerParameterRegisters = {
                 "%rcx",
@@ -532,11 +535,7 @@ public class CodeGenerator {
                 "    je " + elseLabel + "\n"
         );
 
-        for (Statement bodyStatement :
-                statement.getThenBranch()) {
-
-            generateStatement(bodyStatement);
-        }
+        generateScopedStatements(statement.getThenBranch());
 
         assembly.append(
                 "    jmp " + endLabel + "\n"
@@ -548,11 +547,7 @@ public class CodeGenerator {
 
         if (statement.getElseBranch() != null) {
 
-            for (Statement bodyStatement :
-                    statement.getElseBranch()) {
-
-                generateStatement(bodyStatement);
-            }
+            generateScopedStatements(statement.getElseBranch());
         }
 
         assembly.append(
@@ -591,11 +586,7 @@ public class CodeGenerator {
                 "    je " + endLabel + "\n"
         );
 
-        for (Statement bodyStatement :
-                statement.getBody()) {
-
-            generateStatement(bodyStatement);
-        }
+        generateScopedStatements(statement.getBody());
 
         assembly.append(
                 "    jmp " + startLabel + "\n"
@@ -614,6 +605,12 @@ public class CodeGenerator {
     // =========================================================
 
     private void generateEach(EachStatement statement) {
+        Map<String, Integer> savedVariables =
+                new HashMap<>(variables);
+        Map<String, Boolean> savedDecimalVariables =
+                new HashMap<>(decimalVariables);
+        Map<String, Boolean> savedStringVariables =
+                new HashMap<>(stringVariables);
 
         if (statement.getInitializer() != null) {
 
@@ -625,11 +622,14 @@ public class CodeGenerator {
         String startLabel =
                 newLabel("each");
 
+        String updateLabel =
+                newLabel("eachupdate");
+
         String endLabel =
                 newLabel("endeach");
 
         loopEndLabels.push(endLabel);
-        loopContinueLabels.push(startLabel);
+        loopContinueLabels.push(updateLabel);
 
         assembly.append(
                 startLabel + ":\n"
@@ -650,11 +650,11 @@ public class CodeGenerator {
             );
         }
 
-        for (Statement bodyStatement :
-                statement.getBody()) {
+        generateScopedStatements(statement.getBody());
 
-            generateStatement(bodyStatement);
-        }
+        assembly.append(
+                updateLabel + ":\n"
+        );
 
         if (statement.getUpdate() != null) {
 
@@ -669,6 +669,12 @@ public class CodeGenerator {
 
         assembly.append(
                 endLabel + ":\n"
+        );
+
+        restoreScope(
+                savedVariables,
+                savedDecimalVariables,
+                savedStringVariables
         );
 
         loopContinueLabels.pop();
@@ -967,7 +973,11 @@ public class CodeGenerator {
         );
 
         assembly.append(
-                "    pushq %rax\n"
+                "    subq $16, %rsp\n"
+        );
+
+        assembly.append(
+                "    movq %rax, (%rsp)\n"
         );
 
         generateExpression(
@@ -979,7 +989,11 @@ public class CodeGenerator {
         );
 
         assembly.append(
-                "    popq %rax\n"
+                "    movq (%rsp), %rax\n"
+        );
+
+        assembly.append(
+                "    addq $16, %rsp\n"
         );
 
         switch (operator) {
@@ -1106,7 +1120,11 @@ public class CodeGenerator {
         );
 
         assembly.append(
-                "    movq %rax, %rcx\n"
+                "    subq $16, %rsp\n"
+        );
+
+        assembly.append(
+                "    movq %rax, (%rsp)\n"
         );
 
         generateExpression(
@@ -1117,9 +1135,9 @@ public class CodeGenerator {
                 "    movq %rax, %rdx\n"
         );
 
-        assembly.append(
-                "    call strcmp\n"
-        );
+        assembly.append("    movq (%rsp), %rcx\n");
+        assembly.append("    addq $16, %rsp\n");
+        generateWindowsCall("strcmp");
 
         assembly.append(
                 "    cmpq $0, %rax\n"
@@ -1219,9 +1237,7 @@ public class CodeGenerator {
 
             case PERCENT:
 
-                assembly.append(
-                        "    call fmod\n"
-                );
+                generateWindowsCall("fmod");
 
                 break;
 
@@ -1490,20 +1506,24 @@ public class CodeGenerator {
         if (call.getName().equals("input")) {
 
             assembly.append(
-                    "    leaq -120(%rbp), %rdx\n"
+                    "    subq $48, %rsp\n"
+            );
+
+            assembly.append(
+                    "    movq $0, 32(%rsp)\n"
+            );
+
+            assembly.append(
+                    "    leaq 32(%rsp), %rdx\n"
             );
 
             assembly.append(
                     "    leaq input_format(%rip), %rcx\n"
             );
 
-            assembly.append(
-                    "    call scanf\n"
-            );
-
-            assembly.append(
-                    "    movq -120(%rbp), %rax\n"
-            );
+            assembly.append("    call scanf\n");
+            assembly.append("    movq 32(%rsp), %rax\n");
+            assembly.append("    addq $48, %rsp\n");
 
             return;
         }
@@ -1514,10 +1534,7 @@ public class CodeGenerator {
 
         if (call.getName().equals("output")) {
 
-            if (!call.getArguments().isEmpty()) {
-
-                Expression argument =
-                        call.getArguments().get(0);
+            for (Expression argument : call.getArguments()) {
 
                 generateExpression(argument);
 
@@ -1538,9 +1555,7 @@ public class CodeGenerator {
                             "    leaq format_decimal(%rip), %rcx\n"
                     );
 
-                    assembly.append(
-                            "    call printf\n"
-                    );
+                    generateWindowsCall("printf");
                 }
 
                 // string
@@ -1554,9 +1569,7 @@ public class CodeGenerator {
                             "    leaq format_string(%rip), %rcx\n"
                     );
 
-                    assembly.append(
-                            "    call printf\n"
-                    );
+                    generateWindowsCall("printf");
                 }
 
                 // int / truth / char
@@ -1570,9 +1583,7 @@ public class CodeGenerator {
                             "    leaq format_int(%rip), %rcx\n"
                     );
 
-                    assembly.append(
-                            "    call printf\n"
-                    );
+                    generateWindowsCall("printf");
                 }
             }
 
@@ -1603,6 +1614,8 @@ public class CodeGenerator {
 
         List<Expression> arguments =
                 call.getArguments();
+        int scratchBase = -1024 - (callNesting * 32);
+        callNesting++;
 
         /*
          * Evaluate arguments first.
@@ -1622,7 +1635,7 @@ public class CodeGenerator {
             generateExpression(argument);
 
             int scratchOffset =
-                    -480 - (i * 8);
+                    scratchBase - (i * 8);
 
             if (isDecimalExpression(argument)) {
 
@@ -1658,7 +1671,7 @@ public class CodeGenerator {
                     arguments.get(i);
 
             int scratchOffset =
-                    -480 - (i * 8);
+                    scratchBase - (i * 8);
 
             if (isDecimalExpression(argument)) {
 
@@ -1682,11 +1695,14 @@ public class CodeGenerator {
             }
         }
 
-        assembly.append(
-                "    call "
-                        + call.getName()
-                        + "\n"
-        );
+        generateWindowsCall(call.getName());
+        callNesting--;
+    }
+
+    private void generateWindowsCall(String functionName) {
+        assembly.append("    subq $32, %rsp\n");
+        assembly.append("    call " + functionName + "\n");
+        assembly.append("    addq $32, %rsp\n");
     }
 
     // =========================================================
@@ -1746,6 +1762,38 @@ public class CodeGenerator {
     ) {
 
         return offset + "(%rbp)";
+    }
+
+    private void generateScopedStatements(List<Statement> statements) {
+        Map<String, Integer> savedVariables =
+                new HashMap<>(variables);
+        Map<String, Boolean> savedDecimalVariables =
+                new HashMap<>(decimalVariables);
+        Map<String, Boolean> savedStringVariables =
+                new HashMap<>(stringVariables);
+
+        for (Statement statement : statements) {
+            generateStatement(statement);
+        }
+
+        restoreScope(
+                savedVariables,
+                savedDecimalVariables,
+                savedStringVariables
+        );
+    }
+
+    private void restoreScope(
+            Map<String, Integer> savedVariables,
+            Map<String, Boolean> savedDecimalVariables,
+            Map<String, Boolean> savedStringVariables
+    ) {
+        variables.clear();
+        variables.putAll(savedVariables);
+        decimalVariables.clear();
+        decimalVariables.putAll(savedDecimalVariables);
+        stringVariables.clear();
+        stringVariables.putAll(savedStringVariables);
     }
 
     private String newLabel(

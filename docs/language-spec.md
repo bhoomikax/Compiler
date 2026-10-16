@@ -32,7 +32,10 @@ Semantic Analysis
  Executable
 ```
 
-The language provides basic data types, variables, expressions, control flow, functions, arrays, and input/output.
+The implemented language provides scalar data types, variables, expressions,
+control flow, functions, and input/output. Arrays are described in some
+design material but are not implemented by the current lexer, parser, or
+code generator.
 
 ---
 

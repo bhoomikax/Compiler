@@ -412,7 +412,7 @@ public class Lexer {
     }
 
     private void error(String message) {
-        System.err.println(
+        throw new IllegalArgumentException(
                 "Lexer error at line "
                         + line
                         + ", column "

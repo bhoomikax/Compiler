@@ -24,11 +24,14 @@ public class SemanticAnalyzer {
 
     // Stores whether semantic errors occurred
     private boolean hasErrors;
+    private int loopDepth;
 
     public void analyze(Program program) {
 
         currentScope = new SymbolTable();
+        functions.clear();
         hasErrors = false;
+        loopDepth = 0;
 
         // First collect all functions
         collectFunctions(program);
@@ -43,6 +46,10 @@ public class SemanticAnalyzer {
         }
     }
 
+    public boolean hasErrors() {
+        return hasErrors;
+    }
+
     /*
      * Collect all function declarations before analyzing them.
      * This allows functions to call functions declared later.
@@ -50,6 +57,14 @@ public class SemanticAnalyzer {
     private void collectFunctions(Program program) {
 
         for (FunctionDeclaration function : program.getFunctions()) {
+
+            if (function.getParameters().size() > 4) {
+                error(
+                        "Function '"
+                                + function.getName()
+                                + "' has more than 4 parameters; this is not supported"
+                );
+            }
 
             if (functions.containsKey(function.getName())) {
 
@@ -236,9 +251,9 @@ public class SemanticAnalyzer {
                 );
             }
 
-            analyzeBlock(
-                    whileStatement.getBody()
-            );
+            loopDepth++;
+            analyzeBlock(whileStatement.getBody());
+            loopDepth--;
 
         // Each
         } else if (statement instanceof EachStatement eachStatement) {
@@ -248,12 +263,16 @@ public class SemanticAnalyzer {
         // Break
         } else if (statement instanceof BreakStatement) {
 
-            // Loop-context checking will be added later.
+            if (loopDepth == 0) {
+                error("'break' is only valid inside a loop.");
+            }
 
         // Skip
         } else if (statement instanceof SkipStatement) {
 
-            // Loop-context checking will be added later.
+            if (loopDepth == 0) {
+                error("'skip' is only valid inside a loop.");
+            }
         }
     }
 
@@ -357,9 +376,9 @@ public class SemanticAnalyzer {
             );
         }
 
-        analyzeBlock(
-                statement.getBody()
-        );
+        loopDepth++;
+        analyzeBlock(statement.getBody());
+        loopDepth--;
 
         currentScope = previousScope;
     }
