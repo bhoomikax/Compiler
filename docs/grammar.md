@@ -4,9 +4,14 @@
 **Compiler:** CipherCompiler
 **Version:** 1.0
 
-This document defines the formal grammar of the Arc programming language.
+This document records the proposed grammar of the Arc programming language.
 
 The grammar is written in a simplified BNF-style notation.
+
+The scalar statements and expressions describe implemented syntax. Array
+productions are planned syntax only and are not accepted by the current
+compiler. The compiler also limits functions to four parameters and `input()`
+to integers; see [the test notes](../tests/README.md).
 
 ---
 
@@ -78,7 +83,7 @@ func void greet() {
 
 # 4. Parameters
 
-A function may have zero or more parameters.
+A function may have zero to four parameters in the current implementation.
 
 ```text
 parameters
@@ -104,7 +109,7 @@ func int add(int a, int b) {
 
 # 5. Types
 
-Arc supports the following types:
+The implemented scalar types are:
 
 ```text
 type
@@ -114,10 +119,9 @@ type
       | "char"
       | "string"
       | "void"
-      | array_type
 ```
 
-Array types are defined separately.
+Array types below are planned and not implemented.
 
 ---
 
@@ -221,7 +225,7 @@ char grade = 'A';
 string name = "Arc";
 ```
 
-A variable may also be initialized using input:
+A variable may also be initialized using integer input:
 
 ```arc
 int age = input();
@@ -250,7 +254,7 @@ Expressions can be used on the right-hand side:
 x = x + 10;
 ```
 
-Array element assignment is also supported:
+Array element assignment is planned but not implemented:
 
 ```text
 array_assignment
@@ -387,8 +391,14 @@ Arc's counted loop uses `each`.
 each_statement
     ::= "each" "(" each_initialization? ";"
                      expression? ";"
-                     expression? ")"
+                     assignment_without_semicolon? ")"
                      block
+
+each_initialization
+    ::= type identifier ("=" expression)?
+
+assignment_without_semicolon
+    ::= identifier "=" expression
 ```
 
 Example:
@@ -406,6 +416,8 @@ initialization
 condition
 update
 ```
+
+The current parser requires an assignment for the update component.
 
 ---
 
@@ -612,7 +624,6 @@ primary
     ::= literal
       | identifier
       | function_call
-      | array_access
       | input_expression
       | "(" expression ")"
 ```
@@ -668,7 +679,8 @@ int result = multiply(x, y);
 
 # 29. Input
 
-Input is represented as an expression.
+Input is represented as an expression and currently reads an integer only.
+Other input types shown in design examples are not implemented.
 
 ```text
 input_expression
@@ -682,7 +694,7 @@ int age = input();
 ```
 
 ```arc
-string name = input();
+// string name = input();  // not implemented
 ```
 
 ---
@@ -706,9 +718,11 @@ output(x);
 output("Result:", result);
 ```
 
+Each output argument is printed on its own line.
+
 ---
 
-# 31. Array Access
+# 31. Array Access (Planned; Not Implemented)
 
 Array elements are accessed using zero-based indexing.
 
@@ -729,7 +743,7 @@ numbers[i]
 
 ---
 
-# 32. Array Literals
+# 32. Array Literals (Planned; Not Implemented)
 
 Arrays may be initialized using a list of expressions.
 
@@ -902,7 +916,7 @@ func int add(int a, int b) {
 
 func int main() {
 
-    string name = input();
+    string name = "Arc";
 
     int age = input();
 
