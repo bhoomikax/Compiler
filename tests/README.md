@@ -21,6 +21,9 @@ unsuccessfully and does not write assembly.
 | `functions.arc` | Arguments, returns, nested calls, decimal parameters/results |
 | `input_output.arc` | Integer standard input and output |
 | `char_truth.arc` | Character equality, truth values, logical operators |
+| `decimal_parameter_promotion.arc` | Integer arguments passed to `decimal` parameters are converted and delivered in XMM registers, including mixed int/decimal parameter lists |
+| `many_locals.arc` | A function with more than 127 variable slots; call-argument temporaries must not overwrite locals |
+| `large_frame.arc` | A function whose stack frame exceeds one page, exercising frame sizing and stack probing |
 | `invalid_syntax.arc` | Parser rejects malformed syntax |
 | `invalid_semantic.arc` | Semantic analyzer rejects an incompatible assignment |
 | `invalid_loop_control.arc` | Semantic analyzer rejects `break` outside a loop |

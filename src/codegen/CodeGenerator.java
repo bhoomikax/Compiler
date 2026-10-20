@@ -8,6 +8,7 @@ import ast.statements.*;
 
 import lexer.TokenType;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,10 +38,20 @@ public class CodeGenerator {
     private final Stack<String> loopEndLabels = new Stack<>();
     private final Stack<String> loopContinueLabels = new Stack<>();
 
+    // Function parameter types, used to pass each argument in the
+    // register class the callee expects.
+    private final Map<String, List<String>> functionParameterTypes = new HashMap<>();
+
+    // Placeholder replaced with the real frame allocation once the
+    // function body has been generated and the frame size is known.
+    private static final String FRAME_PLACEHOLDER = "    subq $FRAME_SIZE, %rsp\n";
+
+    // Frames of one page or more must be probed on Windows x64.
+    private static final int STACK_PAGE_SIZE = 4096;
+
     private int stackOffset = 0;
     private int labelCounter = 0;
     private int stringLabelCounter = 0;
-    private int callNesting = 0;
 
     private String currentFunctionReturnType = "void";
 
@@ -57,6 +68,7 @@ public class CodeGenerator {
         stringVariables.clear();
 
         functionReturnTypes.clear();
+        functionParameterTypes.clear();
 
         stringLabels.clear();
         stringData.setLength(0);
@@ -67,14 +79,24 @@ public class CodeGenerator {
         stackOffset = 0;
         labelCounter = 0;
         stringLabelCounter = 0;
-        callNesting = 0;
 
-        // Collect function return types
+        // Collect function return and parameter types
         for (FunctionDeclaration function : program.getFunctions()) {
 
             functionReturnTypes.put(
                     function.getName(),
                     function.getReturnType()
+            );
+
+            List<String> parameterTypes = new ArrayList<>();
+
+            for (Parameter parameter : function.getParameters()) {
+                parameterTypes.add(parameter.getType());
+            }
+
+            functionParameterTypes.put(
+                    function.getName(),
+                    parameterTypes
             );
         }
 
@@ -136,7 +158,6 @@ public class CodeGenerator {
         loopContinueLabels.clear();
 
         stackOffset = 0;
-        callNesting = 0;
 
         currentFunctionReturnType = function.getReturnType();
 
@@ -147,7 +168,11 @@ public class CodeGenerator {
 
         assembly.append("    pushq %rbp\n");
         assembly.append("    movq %rsp, %rbp\n");
-        assembly.append("    subq $4096, %rsp\n");
+
+        // The frame size depends on how many slots the body
+        // allocates, so it is patched in after generation.
+        int frameAllocationIndex = assembly.length();
+        assembly.append(FRAME_PLACEHOLDER);
 
         String[] integerParameterRegisters = {
                 "%rcx",
@@ -237,6 +262,44 @@ public class CodeGenerator {
         }
 
         generateFunctionEpilogue();
+
+        assembly.replace(
+                frameAllocationIndex,
+                frameAllocationIndex + FRAME_PLACEHOLDER.length(),
+                frameAllocation(frameSize())
+        );
+    }
+
+    /*
+     * Bytes of %rbp-relative slots used by the current function
+     * (parameters, locals and call-argument temporaries), rounded up
+     * so that %rsp stays 16-byte aligned at every call.
+     */
+    private int frameSize() {
+
+        int used = -stackOffset;
+
+        return ((used + 15) / 16) * 16;
+    }
+
+    /*
+     * Allocate the frame. Frames of one page or more are probed with
+     * ___chkstk_ms, exactly as GCC does on Windows x64, so that the
+     * stack guard page is touched in order.
+     */
+    private String frameAllocation(int frameSize) {
+
+        if (frameSize == 0) {
+            return "";
+        }
+
+        if (frameSize < STACK_PAGE_SIZE) {
+            return "    subq $" + frameSize + ", %rsp\n";
+        }
+
+        return "    movl $" + frameSize + ", %eax\n"
+                + "    call ___chkstk_ms\n"
+                + "    subq %rax, %rsp\n";
     }
 
     private void generateFunctionEpilogue() {
@@ -1614,19 +1677,27 @@ public class CodeGenerator {
 
         List<Expression> arguments =
                 call.getArguments();
-        int scratchBase = -1024 - (callNesting * 32);
-        callNesting++;
+
+        List<String> parameterTypes =
+                functionParameterTypes.get(call.getName());
+
+        int argumentCount =
+                Math.min(arguments.size(), 4);
 
         /*
          * Evaluate arguments first.
          *
-         * Each argument gets a temporary stack slot so that
-         * evaluating later arguments cannot destroy earlier
-         * argument values.
+         * Each argument gets a fresh temporary slot in the frame,
+         * allocated exactly like a local variable, so that evaluating
+         * later arguments or nested calls cannot destroy earlier
+         * argument values and cannot overlap any local.
          */
 
+        int scratchBase = stackOffset - 8;
+        stackOffset -= argumentCount * 8;
+
         for (int i = 0;
-             i < arguments.size() && i < 4;
+             i < argumentCount;
              i++) {
 
             Expression argument =
@@ -1637,7 +1708,7 @@ public class CodeGenerator {
             int scratchOffset =
                     scratchBase - (i * 8);
 
-            if (isDecimalExpression(argument)) {
+            if (isDecimalParameter(parameterTypes, i, argument)) {
 
                 ensureDecimalResult(argument);
 
@@ -1664,7 +1735,7 @@ public class CodeGenerator {
          */
 
         for (int i = 0;
-             i < arguments.size() && i < 4;
+             i < argumentCount;
              i++) {
 
             Expression argument =
@@ -1673,7 +1744,7 @@ public class CodeGenerator {
             int scratchOffset =
                     scratchBase - (i * 8);
 
-            if (isDecimalExpression(argument)) {
+            if (isDecimalParameter(parameterTypes, i, argument)) {
 
                 assembly.append(
                         "    movsd "
@@ -1696,7 +1767,25 @@ public class CodeGenerator {
         }
 
         generateWindowsCall(call.getName());
-        callNesting--;
+    }
+
+    /*
+     * An argument is passed in an XMM register exactly when the
+     * callee's declared parameter type is decimal; integer arguments
+     * to decimal parameters are converted first. If the callee is
+     * unknown, fall back to the argument's own type.
+     */
+    private boolean isDecimalParameter(
+            List<String> parameterTypes,
+            int index,
+            Expression argument
+    ) {
+
+        if (parameterTypes != null && index < parameterTypes.size()) {
+            return "decimal".equals(parameterTypes.get(index));
+        }
+
+        return isDecimalExpression(argument);
     }
 
     private void generateWindowsCall(String functionName) {

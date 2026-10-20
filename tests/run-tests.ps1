@@ -47,6 +47,9 @@ try {
         @{ Name = "functions and nested calls"; File = "functions.arc"; Expected = @("7", "1170", "5.500000") }
         @{ Name = "input and output"; File = "input_output.arc"; Input = "7`n8`n"; Expected = @("15", "7") }
         @{ Name = "char and truth"; File = "char_truth.arc"; Expected = @("1", "0", "1", "65") }
+        @{ Name = "integer arguments to decimal parameters"; File = "decimal_parameter_promotion.arc"; Expected = @("1.500000", "1.500000", "4.500000", "8.000000", "7") }
+        @{ Name = "many locals do not overlap call arguments"; File = "many_locals.arc"; Expected = @("3", "128", "129", "262") }
+        @{ Name = "stack frame larger than one page"; File = "large_frame.arc"; Expected = @("521", "1039") }
         @{ Name = "invalid syntax rejected"; File = "invalid_syntax.arc"; ShouldFail = $true }
         @{ Name = "semantic error rejected"; File = "invalid_semantic.arc"; ShouldFail = $true }
         @{ Name = "loop control outside loops rejected"; File = "invalid_loop_control.arc"; ShouldFail = $true }
