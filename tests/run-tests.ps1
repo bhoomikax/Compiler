@@ -50,6 +50,7 @@ try {
         @{ Name = "integer arguments to decimal parameters"; File = "decimal_parameter_promotion.arc"; Expected = @("1.500000", "1.500000", "4.500000", "8.000000", "7") }
         @{ Name = "many locals do not overlap call arguments"; File = "many_locals.arc"; Expected = @("3", "128", "129", "262") }
         @{ Name = "stack frame larger than one page"; File = "large_frame.arc"; Expected = @("521", "1039") }
+        @{ Name = "locals initialized from nested calls"; File = "nested_call_locals.arc"; Expected = @("50", "30", "20", "7", "87", "15.000000", "nested", "20") }
         @{ Name = "invalid syntax rejected"; File = "invalid_syntax.arc"; ShouldFail = $true }
         @{ Name = "semantic error rejected"; File = "invalid_semantic.arc"; ShouldFail = $true }
         @{ Name = "loop control outside loops rejected"; File = "invalid_loop_control.arc"; ShouldFail = $true }

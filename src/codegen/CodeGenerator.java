@@ -331,9 +331,17 @@ public class CodeGenerator {
 
             stackOffset -= 8;
 
+            /*
+             * Remember this variable's own slot. Generating the
+             * initializer may allocate further frame slots (for
+             * example call-argument temporaries), which moves
+             * stackOffset, so the stores below must not use it.
+             */
+            int slot = stackOffset;
+
             variables.put(
                     declaration.getName(),
-                    stackOffset
+                    slot
             );
 
             String type = declaration.getType();
@@ -363,7 +371,7 @@ public class CodeGenerator {
 
                     assembly.append(
                             "    movsd %xmm0, "
-                                    + memoryLocation(stackOffset)
+                                    + memoryLocation(slot)
                                     + "\n"
                     );
 
@@ -374,7 +382,7 @@ public class CodeGenerator {
 
                     assembly.append(
                             "    movq %rax, "
-                                    + memoryLocation(stackOffset)
+                                    + memoryLocation(slot)
                                     + "\n"
                     );
 
@@ -385,7 +393,7 @@ public class CodeGenerator {
 
                     assembly.append(
                             "    movq %rax, "
-                                    + memoryLocation(stackOffset)
+                                    + memoryLocation(slot)
                                     + "\n"
                     );
                 }
